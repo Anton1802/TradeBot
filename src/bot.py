@@ -162,6 +162,7 @@ async def stop_cstrade(message: types.Message):
     scheduler.pause_job(job_id='process_cstrade')
     scheduler.remove_job(job_id='process_cstrade')
 
+
 if __name__ == "__main__":
     scheduler.start()
     executor.start_polling(dp)
