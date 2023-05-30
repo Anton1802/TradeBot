@@ -15,11 +15,10 @@ class Tablevv:
             'Content-type': 'application/json; charset=utf-8',
             'Content-encoding': 'br',
         }
-        
         self.__filters = filters
         self.__cookies = cookies
         self.__url = url
-    
+
     async def get_items(self) -> list | None:
         async with ClientSession(cookies=self.__cookies) as session:
             while True:
