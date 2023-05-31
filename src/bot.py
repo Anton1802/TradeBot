@@ -15,6 +15,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters import Text
 
 from modules.tablevv import Tablevv
+from modules.cstrade import CSTrade
 
 class IsAdmin(Filter):
     async def check(self, message: types.Message):
@@ -154,8 +155,21 @@ async def start_cstrade(message: types.Message):
         await message.answer("Trade is already started!")
     
 async def process_cstrade(message: types.Message):
-    # Function for run trade
-    ...
+    config = get_config_temp()
+    
+    tablevv = Tablevv()
+    tablevv.set_config(config['tablevv_filters'], config['tablevv_cookies'], config['tablevv_url'])
+
+    cstrade = CSTrade()
+    cstrade.set_config(
+            config['cstrade_url_app'],
+            config['cstrade_url_api_inventory'],
+            config['cstrade_url_api_trade'], 
+            config['cstrade_cookies'],)
+
+    tablevv_items = await tablevv.get_items()
+    
+    await cstrade.make_trade(tablevv_items)
 
 @dp.message_handler(IsAdmin(), commands='cstrade_stop_trade')
 async def stop_cstrade(message: types.Message):
