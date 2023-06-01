@@ -108,7 +108,7 @@ async def config_view(message: types.Message):
     string = ""
     string += f"{md.bold('Parameters: ')}\n"
     for name_parameter in config:
-        string += f"{md.bold(name_parameter)}: {md.code(config[name_parameter])} \n"
+        string += f"{md.bold(name_parameter)}: {md.code(json.dumps(config[name_parameter]))} \n"
 
     await message.answer(string, parse_mode='MarkdownV2')
     
@@ -124,6 +124,7 @@ async def process_set_config_name(message: types.Message, state: FSMContext):
         data['parameter_name'] = message.text
 
         config = get_config_temp()
+
         if config.get(data['parameter_name']) == None:
             await message.answer("The parameter does not exists")
         else:
@@ -133,7 +134,10 @@ async def process_set_config_name(message: types.Message, state: FSMContext):
 @dp.message_handler(IsAdmin(), state=Form.value)
 async def process_set_config_value(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['parameter_value'] = message.text
+        try:
+            data['parameter_value'] = json.loads(message.text)
+        except json.decoder.JSONDecodeError:
+            await message.answer("Enter data in JSON format!")
 
         config = get_config_temp()
         config[data['parameter_name']] = data['parameter_value']
@@ -160,52 +164,55 @@ async def start_cstrade(message: types.Message):
         await message.answer("Trade is already started!")
     
 async def process_cstrade(message: types.Message):
-    config = get_config_temp()
-    admins = get_config_gen()['admins']
+    try:
+        config = get_config_temp()
+        admins = get_config_gen()['admins']
     
-    tablevv = Tablevv()
-    tablevv.set_config(config['tablevv_filters'], config['tablevv_cookies'], config['tablevv_url'])
+        tablevv = Tablevv()
+        tablevv.set_config(config['tablevv_filters'], config['tablevv_cookies'], config['tablevv_url'])
 
-    cstrade = CSTrade()
-    cstrade.set_config(
-        config['cstrade_url_app'],
-        config['cstrade_url_api_inventory'],
-        config['cstrade_url_api_trade'], 
-        config['cstrade_cookies'],
-        config['cstrade_item_count_max'],
-    )
+        cstrade = CSTrade()
+        cstrade.set_config(
+            config['cstrade_url_app'],
+            config['cstrade_url_api_inventory'],
+            config['cstrade_url_api_trade'], 
+            config['cstrade_cookies'],
+            config['cstrade_item_count_max'],
+        )
 
-    tablevv_items = await tablevv.get_items()
-    
-    buy_items = await cstrade.make_trade(tablevv_items)
+        tablevv_items = await tablevv.get_items()
+        
+        buy_items = await cstrade.make_trade(tablevv_items)
 
-    steam_url = "https://steamcommunity.com/market/listings"
-    if buy_items is not None:
-        for admin in admins:
-            for item, t_item in zip(buy_items['cstrade_items'], buy_items['table_items']):
-                await message.bot.send_message(
-                    admin,
-                    md.text(
+        steam_url = "https://steamcommunity.com/market/listings"
+        if buy_items is not None:
+            for admin in admins:
+                for item, t_item in zip(buy_items['cstrade_items'], buy_items['table_items']):
+                    await message.bot.send_message(
+                        admin,
                         md.text(
-                            md.hbold("Link on item: "),
-                            md.hlink('URL', f"{steam_url}/{item['app_id']}/{item['market_hash_name'].replace('+', ' ')}"),
+                            md.text(
+                                md.hbold("Link on item: "),
+                                md.hlink('URL', f"{steam_url}/{item['app_id']}/{item['market_hash_name'].replace('+', ' ')}"),
+                            ),
+                            md.text(
+                                md.hbold("Price 1 platform: "),
+                                md.hcode(f"{t_item['i1']['p']}$"),
+                            ),
+                            md.text(
+                                md.hbold("Price 2 platform: "),
+                                md.hcode(f"{t_item['i2']['p']}$"),
+                            ),
+                            md.text(
+                                md.hbold("Profit: "),
+                                md.hcode(f"{t_item['p']}%")
+                            ),
+                            sep="\n",
                         ),
-                        md.text(
-                            md.hbold("Price 1 platform: "),
-                            md.hcode(f"{t_item['i1']['p']}$"),
-                        ),
-                        md.text(
-                            md.hbold("Price 2 platform: "),
-                            md.hcode(f"{t_item['i2']['p']}$"),
-                        ),
-                        md.text(
-                            md.hbold("Profit: "),
-                            md.hcode(f"{t_item['p']}%")
-                        ),
-                        sep="\n",
-                    ),
-                    parse_mode="HTML",
-                )
+                        parse_mode="HTML",
+                    )
+    except Exception as e:
+        await message.answer(f"Error: {e}")
 
 @dp.message_handler(IsAdmin(), commands='cstrade_stop_trade')
 async def stop_cstrade(message: types.Message):

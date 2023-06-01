@@ -24,7 +24,7 @@ class Tablevv:
             while True:
                 async with session.post(f"{self.__url}?page={self.__page}", json=self.__filters, headers=self.__headers) as response:
                     if response.status != 200:
-                        raise Exception("Code 200")
+                        raise Exception(f"Code 200 {await response.text()}")
 
                     response_json = await response.json() 
 
