@@ -3,6 +3,7 @@ import asyncio
 import logging
 from pathlib import Path
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.jobstores.base import JobLookupError
 
 import aiogram.utils.markdown as md
 from aiogram import Bot, types
@@ -92,6 +93,10 @@ async def help(message: types.Message):
         md.text(
             md.code('/cstrade_start_trade'),
             md.text('\- запускает трейдинг в боте'),
+        ),
+        md.text(
+            md.code('/cstrade_stop_trade'),
+            md.text('\- останавливает трейдинг в боте'),
         ),
         sep="\n",
     )
@@ -204,9 +209,13 @@ async def process_cstrade(message: types.Message):
 
 @dp.message_handler(IsAdmin(), commands='cstrade_stop_trade')
 async def stop_cstrade(message: types.Message):
-    scheduler.pause_job(job_id='process_cstrade')
-    scheduler.remove_job(job_id='process_cstrade')
-
+    try:
+        scheduler.pause_job(job_id='process_cstrade')
+        scheduler.remove_job(job_id='process_cstrade')
+    except JobLookupError:
+        await message.answer("Trading is not running!")
+    else:
+        await message.answer("Trading stopped!")
 
 if __name__ == "__main__":
     scheduler.start()
