@@ -156,20 +156,51 @@ async def start_cstrade(message: types.Message):
     
 async def process_cstrade(message: types.Message):
     config = get_config_temp()
+    admins = get_config_gen()['admins']
     
     tablevv = Tablevv()
     tablevv.set_config(config['tablevv_filters'], config['tablevv_cookies'], config['tablevv_url'])
 
     cstrade = CSTrade()
     cstrade.set_config(
-            config['cstrade_url_app'],
-            config['cstrade_url_api_inventory'],
-            config['cstrade_url_api_trade'], 
-            config['cstrade_cookies'],)
+        config['cstrade_url_app'],
+        config['cstrade_url_api_inventory'],
+        config['cstrade_url_api_trade'], 
+        config['cstrade_cookies'],
+        config['cstrade_item_count_max'],
+    )
 
     tablevv_items = await tablevv.get_items()
     
-    await cstrade.make_trade(tablevv_items)
+    buy_items = await cstrade.make_trade(tablevv_items)
+
+    steam_url = "https://steamcommunity.com/market/listings"
+    if buy_items is not None:
+        for admin in admins:
+            for item, t_item in zip(buy_items['cstrade_items'], buy_items['table_items']):
+                await message.bot.send_message(
+                    admin,
+                    md.text(
+                        md.text(
+                            md.hbold("Link on item: "),
+                            md.hlink('URL', f"{steam_url}/{item['app_id']}/{item['market_hash_name'].replace('+', ' ')}"),
+                        ),
+                        md.text(
+                            md.hbold("Price 1 platform: "),
+                            md.hcode(f"{t_item['i1']['p']}$"),
+                        ),
+                        md.text(
+                            md.hbold("Price 2 platform: "),
+                            md.hcode(f"{t_item['i2']['p']}$"),
+                        ),
+                        md.text(
+                            md.hbold("Profit: "),
+                            md.hcode(f"{t_item['p']}%")
+                        ),
+                        sep="\n",
+                    ),
+                    parse_mode="HTML",
+                )
 
 @dp.message_handler(IsAdmin(), commands='cstrade_stop_trade')
 async def stop_cstrade(message: types.Message):
